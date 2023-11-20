@@ -196,6 +196,10 @@ climosaic <- mapply(
 )
 climosaic <- Reduce(c, climosaic)
 
+# Masque des profondeurs
+dmask <- climosaic$depth
+dmask <- ifel(dmask > -150, 1, NA)
+
 # polygones et étendues îles/antilles
 maps_marxan     <- maps
 maps_marxan$ANT <- Reduce(rbind, maps)

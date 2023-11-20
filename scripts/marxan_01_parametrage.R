@@ -3,8 +3,8 @@
 ################################################################################
 
 # 1. Choix de la zone d'étude ####
-nisl <- "GLP"
-projt <- "current"
+nisl   <- "GLP"
+projt  <- "current"
 supfam <- "all"
 subfam <- switch(supfam, all = "ALL", Majoidea = "MAJ", Muricoidea = "MUR")
 
@@ -120,15 +120,6 @@ spf <- c(
 spf <- 1000
 
 # 5. Choix des coûts de mailles à partir des pressions anthropiques ####
-# cost <- "global_cumul_impact_2013_all_layers"
-# cost <- "invasives"
-# cost <- "ocean_pollution"
-# cost <- "pelagic_high_bycatch"
-# cost <- "pelagic_low_bycatch"
-# cost <- "plumes_fert"
-# cost <- "plumes_pest"
-# cost <- "population"
-# cost <- "shipping"
 # cost_threshold <- 0.85
 cost_threshold <- "none"
 cost <- 1
