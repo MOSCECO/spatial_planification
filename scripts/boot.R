@@ -3,6 +3,7 @@
 # libraries ----
 libs_to_call <- list(
 
+  "betapart",
   "data.table",
   "devtools",
   "ggnewscale",
@@ -31,11 +32,11 @@ lapply(
 
   function(i) {
 
+    print(i)
+
     bool <- is.element(i, .packages(all.available = TRUE))
 
-    if (!bool) {
-      install.packages(i, dependencies = T)
-    }
+    if (!bool) install.packages(i, dependencies = T)
 
     library(i, character.only = TRUE)
 
