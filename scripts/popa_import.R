@@ -32,6 +32,10 @@ mae <- Sapply(
                     full.names = T
                   ),
                   \(f) {
+                    # f <- list.files(
+                    #   here(popa_path, px, supfam, spe, ens_alg),
+                    #   full.names = T
+                    # )[[3]]
                     out <- if (px == "adequation_environnementale") {
                       rast(f)
                     } else {

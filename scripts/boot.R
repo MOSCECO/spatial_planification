@@ -11,6 +11,7 @@ libs_to_call <- list(
   "ggpubr",
   "ggthemes",
   "here",
+  "parallel",
   "patchwork",
   "purrr",
   "raster",
@@ -82,10 +83,6 @@ lapply(
 # )
 
 # functions
-# cmd <- "rsync -avuc --delete /home/borea/Documents/mosceco/r_projects/MOSCECO_L2/habitat_suitability/scripts/FUN /home/borea/Documents/mosceco/r_projects/MOSCECO_L3/spatial_planification/scripts"
-# system(cmd)
-# cmd <- "rsync -avuc --delete /home/borea/Documents/mosceco/r_projects/MOSCECO_miscellanous/TP_ENSTA_2023_Planification_Spatiale/scripts/FUN/* /home/borea/Documents/mosceco/r_projects/MOSCECO_L3/spatial_planification/scripts/FUN/"
-# system(cmd)
 lapply(
   list.files(
     here("scripts", "FUN"),
@@ -116,8 +113,6 @@ names(colors_taxa) <- superFamilies
 makeMyDir(here("data", "raw", "occ"))
 
 # polygones îles ----
-# cmd <- "rsync -avuc --delete /home/borea/Documents/mosceco/r_projects/MOSCECO_L2/habitat_suitability/data/raw/shp /home/borea/Documents/mosceco/r_projects/MOSCECO_L3/spatial_planification/data/raw"
-# system(cmd)
 maps <- list.files(
   here("data", "raw", "shp", "polygones_iles"),
   pattern = "*.shp",
@@ -140,8 +135,6 @@ me <- readRDS(
 )
 
 # occurrences d'espèces
-# cmd <- "rsync -avuc --delete /home/borea/Documents/mosceco/r_projects/MOSCECO_L2/habitat_suitability/data/tidy/occ/list_occ_rasterized.rds /home/borea/Documents/mosceco/r_projects/MOSCECO_L3/spatial_planification/data/raw/occ/"
-# system(cmd)
 pa <- readRDS(here("data", "raw", "occ", "list_occ_rasterized.rds"))
 
 # Espèces modélisées
@@ -171,8 +164,6 @@ species <- tibble(
 )
 
 # climatologies avec salinités hybrides ----
-# cmd <- "rsync -avuc --delete /home/borea/Documents/mosceco/r_projects/MOSCECO_L2/habitat_suitability/data/raw/climatologies_spatRaster /home/borea/Documents/mosceco/r_projects/MOSCECO_L3/spatial_planification/data/raw/"
-# system(cmd)
 climatologies <- lapply(
   list.files(
     here("data", "raw", "climatologies_spatRaster"),
@@ -213,22 +204,5 @@ ext_marxan <- list(
 )
 
 # modélisations de distributions
-# cmd <- "rsync -avuc --delete /home/borea/Documents/mosceco/r_projects/MOSCECO_L2/habitat_suitability/data/analysis/compilation/presence_absence /home/borea/Documents/mosceco/r_projects/MOSCECO_L3/spatial_planification/data/raw/mae"
-# system(cmd)
-# cmd <- "rsync -avuc --delete /home/borea/Documents/mosceco/r_projects/MOSCECO_L2/habitat_suitability/data/analysis/compilation/adequation_environnementale /home/borea/Documents/mosceco/r_projects/MOSCECO_L3/spatial_planification/data/raw/mae"
-# system(cmd)
-# cmd <- "rsync -avuc --delete /home/borea/Documents/mosceco/r_projects/MOSCECO_L2/habitat_suitability/scripts/popa_* /home/borea/Documents/mosceco/r_projects/MOSCECO_L3/spatial_planification/scripts/"
-# system(cmd)
 popa_path <- here("data", "raw", "mae")
 source(here("scripts", "popa_import.R"))
-
-# Logiciel MARXAN
-# makeMyDir(here("scripts", "Marxan"))
-# cmd <- "rsync -avuc --delete /home/borea/Documents/mosceco/r_projects/MOSCECO_miscellanous/TP_ENSTA_2023_Planification_Spatiale/data/Marxan* /home/borea/Documents/mosceco/r_projects/MOSCECO_L3/spatial_planification/scripts/Marxan/"
-# system(cmd)
-# cmd <- "rsync -avuc --delete /home/borea/Documents/mosceco/r_projects/MOSCECO_miscellanous/TP_ENSTA_2023_Planification_Spatiale/data/input.dat /home/borea/Documents/mosceco/r_projects/MOSCECO_L3/spatial_planification/data/raw/"
-# system(cmd)
-
-# Routine Marxan
-# cmd <- "rsync -avuc --delete /home/borea/Documents/mosceco/r_projects/MOSCECO_miscellanous/TP_ENSTA_2023_Planification_Spatiale/scripts/*.R /home/borea/Documents/mosceco/r_projects/MOSCECO_L3/spatial_planification/scripts/"
-# system(cmd)

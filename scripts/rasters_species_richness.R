@@ -34,7 +34,7 @@ lapply(
 
             file_name <- paste("raster", supfam, ens_alg, projt, sep = "_") %>%
               paste0(".tif")
-            writeRaster(sp_pa, here(pout, file_name))
+            writeRaster(sp_pa, here(pout, file_name), overwrite = T)
 
           })
       })

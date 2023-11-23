@@ -1,4 +1,6 @@
 # beta diversity cluster
+T0 <- Sys.time()
+source(here::here("scripts", "boot.R"))
 
 # destination folder
 pout <- here("data", "tidy", "beta_diversity")
@@ -25,8 +27,6 @@ names(sr) <- list.files(
 sr_crop <- lapply(sr, \(x) x * dmask)
 sr_dtfr <- lapply(sr_crop, as.data.frame)
 
-
-
 # scénario optimiste ----
 xy <- as.data.frame(sr_crop$current, xy = T) %>% select(x, y)
 d0 <- sr_dtfr$current
@@ -35,14 +35,18 @@ d1 <- sr_dtfr$ssp126
 d0_chunks <- split(d0, ceiling(seq_along(1:nrow(d0))/10000))
 d1_chunks <- split(d1, ceiling(seq_along(1:nrow(d1))/10000))
 
+t0 <- Sys.time()
 beta_dtfr <- Mapply(\(x, y) betapart::beta.temp(x, y), d0_chunks, d1_chunks)
+t1 <- Sys.time()
+print("Duration for optimistic scenario")
+print(t1 - t0)
 beta_rast <- rast(cbind(xy, do.call(rbind, beta_dtfr)))
 
 # sauvegarde
 file_name <- paste(
   "temporal", "beta", "diversity", ens_alg, "optimistic", sep = "_"
 )
-writeRaster(beta_rast, here(pout, file_name %>% paste0(".tif")))
+writeRaster(beta_rast, here(pout, file_name %>% paste0(".tif")), overwrite = T)
 
 
 
@@ -54,11 +58,19 @@ d1 <- sr_dtfr$ssp585
 d0_chunks <- split(d0, ceiling(seq_along(1:nrow(d0))/10000))
 d1_chunks <- split(d1, ceiling(seq_along(1:nrow(d1))/10000))
 
+t0 <- Sys.time()
 beta_dtfr <- Mapply(\(x, y) betapart::beta.temp(x, y), d0_chunks, d1_chunks)
+t1 <- Sys.time()
+print("Duration for pessimistic scenario")
+print(t1 - t0)
 beta_rast <- rast(cbind(xy, do.call(rbind, beta_dtfr)))
 
 # sauvegarde
 file_name <- paste(
   "temporal", "beta", "diversity", ens_alg, "pessimistic", sep = "_"
 )
-writeRaster(beta_rast, here(pout, file_name %>% paste0(".tif")))
+writeRaster(beta_rast, here(pout, file_name %>% paste0(".tif")), overwrite = T)
+TF <- Sys.time()
+
+print("Total duration of the computation")
+print(TF - T0)
