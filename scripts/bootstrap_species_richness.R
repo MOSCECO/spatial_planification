@@ -8,7 +8,7 @@ i_ensalg <- c("ca", "wmean")
 i_projtm <- c("current", "ssp126", "ssp585")
 
 # Paramétrage bootstrap
-n_resamp <- 10000
+n_resamp <- 2
 
 # dossier de sortie
 pout <- here("data", "tidy", "bootstrap_species_richness")
@@ -24,7 +24,7 @@ lapply(
           i_projtm,
           \(projt) {
 
-            # supfam  <- "all"
+            # supfam  <- "Muricoidea"
             # ens_alg <- "ca"
             # projt   <- "ssp126"
 
@@ -92,27 +92,42 @@ lapply(
               1:n_resamp
             )
             print("Changement des noms du raster ok")
-            bsr <- Reduce(c, bootstrap_raster)
+
+            print("Aggrégation des rasters")
+            bsr <- do.call(c, bootstrap_raster)
+            print("Aggrégation des rasters ok")
+
             # sauvegarde du raster de tous les runs de ré-échantillonnage
-            print("Sauvegarde")
-            writeRaster(
-              bsr,
-              here(pout, paste0("bootstrap_sr_", file_name, ".tif")),
-              overwrite = T
-            )
-            print("Sauvegarde ok")
+            # print("Sauvegarde")
+            # writeRaster(
+            #   bsr,
+            #   here(pout, paste0("bootstrap_sr_", file_name, ".tif")),
+            #   overwrite = T
+            # )
+            # print("Sauvegarde ok")
 
             # Calcul de trois estimateurs de richesse spécifique
             # aggrégation aux données initiales
             print("Raster des quantiles")
-            BSR <- c(
-              sp$combine,
-              quantile(
-                bsr, probs = c(0.025, 0.500, 0.975), na.rm = TRUE
-              )
+
+            bsr_chunks <- fragSpatialRaster(bsr, dvd = 100)
+
+            bsr_chunks_quant <- mclapply(
+              bsr_chunks,
+              \(chnk) {
+                quantile(
+                  chnk, probs = c(0.025, 0.500, 0.975), na.rm = TRUE
+                )
+              },
+              mc.cores = 1
             )
-            names(BSR)[1] <- "init"
+
+            bsr_quant <- Reduce(merge, bsr_chunks_quant)
+
             print("Raster des quantiles ok")
+
+            BSR <- c(sp$combine, bsr_quant)
+            names(BSR)[1] <- "init"
 
             # sauvegarde
             print("Sauvegarde")
