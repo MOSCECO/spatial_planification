@@ -9,7 +9,7 @@ i_ensalg <- c("ca", "wmean")
 i_projtm <- c("current", "ssp126", "ssp585")
 
 # Paramétrage bootstrap
-n_resamp <- 10000
+n_resamp <- 50
 
 # dossier de sortie
 pout <- here("data", "tidy", "bootstrap_species_richness")
@@ -111,24 +111,52 @@ lapply(
             print("Sauvegarde")
             writeRaster(
               bsr,
-              here(pout, paste0("bootstrap_sr_"sss, file_name, ".tif")),
+              here(pout, paste0("bootstrap_sr_", file_name, ".tif")),
               overwrite = T
             )
             print("Sauvegarde ok")
             # Calcul de trois estimateurs de richesse spécifique
-            bsr_quant <- mclapply(
+            bsr_arr <- as.array(bsr)
+            e <- quantile(bsr, 0.025, na.rm = T)
+            e <- quantile(bsr, 0.500, na.rm = T)
+            e <- quantile(bsr, 0.975, na.rm = T)
+
+            nr <- dim(bsr_arr)[1]
+            nc <- dim(bsr_arr)[2]
+            library(primes)
+            dvd <- gcd(round(nr, -2), round(nc, -2))
+            chunks_rows <- split(1:nr, ceiling(seq_along(1:nr)/dvd))
+            chunks_cols <- split(1:nc, ceiling(seq_along(1:nc)/dvd))
+            bsr_chunks <- lapply(
+              chunks_rows,
+              \(nr) lapply(chunks_cols, \(nc) bsr_arr[nr, nc, ])
+            )
+            bsr_chunks <- Reduce(
+              append, lapply(1:length(bsr_chunks), \(x) pluck(bsr_chunks, x))
+            )
+            names(bsr_chunks) <- 1:length(bsr_chunks)
+
+
+
+            bsr_quant <- lapply(
               c(0.025, 0.500, 0.975),
               \(prob) {
-                bsr_arr <- as.array(bsr)
-                parPrint("Quantile")
-                out <- apply(
-                  bsr_arr, c(1,2), \(x) quantile(x, probs = prob, na.rm = T)
-                )
-                parPrint("Quantile ok")
-                return(out)
-              },
-              mc.cores = 3
-            )
+                # prob <- 0.025
+                print(prob)
+                mclapply(
+                  bsr_chunks,
+                  \(chnk) {
+                    # chnk <- bsr_chunks[[348]]
+                    parPrint("Quantile")
+                    out <- apply(
+                      chnk,
+                      c(1:2),
+                      \(x) quantile(x, probs = prob, na.rm = TRUE)
+                    )
+                    parPrint("Quantile ok")
+                    return(out)
+                  }, mc.cores = detectCores() - 1)
+              })
             bsr_quant_rast <- bsr_quant %>%
               lapply(rast, crs = crs(sp$combine), ext = ext(sp$combine))
 
