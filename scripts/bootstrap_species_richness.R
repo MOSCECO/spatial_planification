@@ -3,13 +3,12 @@
 source(here::here("scripts", "boot.R"))
 
 # itérations sur
-# i_supfam <- c("all", "Muricoidea", "Majoidea")
-i_supfam <- c("all")
+i_supfam <- c("all", "Muricoidea", "Majoidea")
 i_ensalg <- c("ca", "wmean")
 i_projtm <- c("current", "ssp126", "ssp585")
 
 # Paramétrage bootstrap
-n_resamp <- 50
+n_resamp <- 10000
 
 # dossier de sortie
 pout <- here("data", "tidy", "bootstrap_species_richness")
@@ -70,34 +69,21 @@ lapply(
             # Création de raster sommes de toutes les présences/absences des
             # espèces selon le jeu d'espèces issu du bootstrap
             print("Aggrégation du raster")
-            # t0 <- Sys.time()
-            # bootstrap_raster <- bootstrap %>%
-            #   lapply(
-            #     \(nsp) app(
-            #       subset(sp_pa, nsp), sum ou \(i) sum(i) et cores = x
-            #     )
-            #   )
-            # t1 <- Sys.time()
-            # t1-t0
             t0 <- Sys.time()
-            bootstrap_array <- bootstrap %>%
-              mclapply(
-                \(nsp) {
-                  sr_sub <- subset(sp_pa, nsp)
-                  sr_arr <- as.array(sr_sub)
-                  parPrint("Somme des rasters")
-                  out <- apply(sr_arr, c(1,2), sum)
-                  parPrint("Somme des rasters ok")
-                  return(out)
-                },
-                mc.cores = detectCores() - 1
-              )
+            bootstrap_raster <- mclapply(
+              1:length(bootstrap),
+              \(i) {
+                # i <- 1
+                parPrint(paste0(i, "/", length(bootstrap)))
+                nsp    <- bootstrap[[i]]
+                sr_sub <- subset(sp_pa, nsp)
+                return(wrap(sum(sr_sub, na.rm = TRUE)))
+              },
+              mc.cores = detectCores() - 1
+            ) %>% lapply(unwrap)
             t1 <- Sys.time()
             print(t1-t0)
             print("Aggrégation du raster ok")
-
-            bootstrap_raster <- bootstrap_array %>%
-              lapply(rast, crs = crs(sp$combine), ext = ext(sp$combine))
 
             print("Changement des noms du raster")
             bootstrap_raster <- Mapply(
@@ -115,59 +101,27 @@ lapply(
               overwrite = T
             )
             print("Sauvegarde ok")
+
             # Calcul de trois estimateurs de richesse spécifique
-            bsr_arr <- as.array(bsr)
-            e <- quantile(bsr, 0.025, na.rm = T)
-            e <- quantile(bsr, 0.500, na.rm = T)
-            e <- quantile(bsr, 0.975, na.rm = T)
-
-            nr <- dim(bsr_arr)[1]
-            nc <- dim(bsr_arr)[2]
-            library(primes)
-            dvd <- gcd(round(nr, -2), round(nc, -2))
-            chunks_rows <- split(1:nr, ceiling(seq_along(1:nr)/dvd))
-            chunks_cols <- split(1:nc, ceiling(seq_along(1:nc)/dvd))
-            bsr_chunks <- lapply(
-              chunks_rows,
-              \(nr) lapply(chunks_cols, \(nc) bsr_arr[nr, nc, ])
+            # aggrégation aux données initiales
+            print("Raster des quantiles")
+            BSR <- c(
+              sp$combine,
+              quantile(
+                bsr, probs = c(0.025, 0.500, 0.975), na.rm = TRUE
+              )
             )
-            bsr_chunks <- Reduce(
-              append, lapply(1:length(bsr_chunks), \(x) pluck(bsr_chunks, x))
-            )
-            names(bsr_chunks) <- 1:length(bsr_chunks)
+            names(BSR)[1] <- "init"
+            print("Raster des quantiles ok")
 
-
-
-            bsr_quant <- lapply(
-              c(0.025, 0.500, 0.975),
-              \(prob) {
-                # prob <- 0.025
-                print(prob)
-                mclapply(
-                  bsr_chunks,
-                  \(chnk) {
-                    # chnk <- bsr_chunks[[348]]
-                    parPrint("Quantile")
-                    out <- apply(
-                      chnk,
-                      c(1:2),
-                      \(x) quantile(x, probs = prob, na.rm = TRUE)
-                    )
-                    parPrint("Quantile ok")
-                    return(out)
-                  }, mc.cores = detectCores() - 1)
-              })
-            bsr_quant_rast <- bsr_quant %>%
-              lapply(rast, crs = crs(sp$combine), ext = ext(sp$combine))
-
-            # aggrégation aux données initiales et sauvegarde
-            BSR <- c(sp$combine, Reduce(c, bsr_quant_rast))
-            names(BSR) <- c("init", "q02.5", "q50.0", "q97.5")
+            # sauvegarde
+            print("Sauvegarde")
             writeRaster(
               BSR,
               here(pout, paste0("bootstrap_sr_est_", file_name, ".tif")),
               overwrite = T
             )
+            print("Sauvegarde ok")
 
           })
       })
