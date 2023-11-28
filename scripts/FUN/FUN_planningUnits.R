@@ -102,13 +102,17 @@ planningUnits <- function(
           }
         )
 
-        return(as.data.frame(l$cost))
+        return(as.data.frame(l$cost, na.rm = F))
 
       }
     )
-    my_costs %>% lapply(dim)
+
     # Compilation des coûts
-    df_costs <- Reduce(rowSums, my_costs)
+    df_costs <- rowSums(do.call(cbind, my_costs), na.rm = T)
+    c0 <- as.data.frame(spatRast_cost_list100$hotspot, cells = T, na.rm = F)
+    cc <- as.data.frame(spatRast_cost_list100$hotspot, cells = T)
+    b <- which(c0$cell %in% cc$cell)
+    df_costs <- df_costs[b]
 
     # Aggrégation en un dataframe
     PlanUnFile <- as.data.frame(r_proj, cells = T, xy = T) %>%
