@@ -23,7 +23,7 @@ outputMarxanFiles_mosceco <- function(spatial_raster, path_inout) {
   # Organisation de la table sommée dans l'ordre des plannin_units
   tr <- tr[order(tr), ]
   sols <- dir(output, pattern = "*_r")
-  NRep <- repetitions
+  NRep <- nreps_total
 
   # Ajout de chacun des résultats des runs en une colonne dans la table finale
   for(i in 1:NRep){

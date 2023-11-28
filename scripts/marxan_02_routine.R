@@ -161,12 +161,16 @@ marxan_file_logs <- Sapply(
   }
 )
 
-ncosts <- names(spatRast_cost_list100) %>% substr(1,3) %>% paste(collapse = "+")
+ncosts <- if (is.null(spatRast_cost_list)) "na" else {
+  names(spatRast_cost_list100) %>% substr(1,3) %>% paste(collapse = "+")
+}
 marxan_file_names <- sapply(
   names(sp_subs),
   \(n) {
     paste(
-      projt, tolower(n), tolower(nisl), paste("cost", ncosts, sep = "-"),
+      projt, tolower(n), tolower(nisl),
+      paste("cost", ncosts, sep = "-"),
+      nreps_total,
       sep = "_"
     )
   })
@@ -175,7 +179,7 @@ marxan_file_names <- sapply(
 fichiers_sorties <- sapply(
   names(marxan_file_names),
   \(ntax) {
-
+    # ntax <- "ALL"
     f <- marxan_file_names[[ntax]]
 
     # Création du fichier correspondant au run Marxan
@@ -288,7 +292,11 @@ Mapply(
       \(X) {
         # Copie du fichier original en fichier temporaire
         temp_dir_name <- paste(
-          "temp", paste("reps", min(X), max(X), sep = "_"), sep = "/"
+          "temp",
+          paste(
+            "reps", sprintf("%09d", min(X)), sprintf("%09d", max(X)), sep = "_"
+          ),
+          sep = "/"
         )
         path_temp <- here(path, temp_dir_name)
         if (dir.exists(path_temp)) {
@@ -367,6 +375,13 @@ Mapply(
     # speciesRichness <- sp_sr$ALL
     # path <- fichiers_sorties$ALL
 
+    # Fichiers de sauvegarde
+    path_inout <- list(
+      input  = here(path, "input"),
+      output = here(path, "output")
+    )
+    path_figures <- here(path, "figures")
+
     Mapply(
       \(f, x, y) {
         # x <- 1
@@ -374,10 +389,9 @@ Mapply(
 
         Mapply(
           \(ft, nb) {
-            file.rename(
-              ft, sub("temp_r[0-9]+", paste0("temp_r", sprintf("%05d", nb)), ft)
-            )
-            file.copy(ft, here(path, "output"), overwrite = T)
+            ftx <- sub("temp_r[0-9]+", paste0("temp_r", sprintf("%09d", nb)), ft)
+            file.rename(ft, ftx)
+            file.copy(ftx, here(path, "output"), overwrite = T)
           },
           list.files(here(f, "output"), pattern = ".+r.+", full.names = T),
           seq(x, y)

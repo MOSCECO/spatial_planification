@@ -159,7 +159,11 @@ spatRast_cost_list <- NULL
 # Choix du nombre de répétitions du modèle ####
 # repetitions <- "auto"
 
-nreps_total <- 2300
+# nreps_total <- 230
+nreps_total <- 100000
 nreps_ncpus <- split(
   1:nreps_total, ceiling((1:nreps_total)/(detectCores() - 1))
 )
+
+source(here("scripts", "marxan_02_routine.R"))
+source(here("scripts", "marxan_03_visualisation.R"))
