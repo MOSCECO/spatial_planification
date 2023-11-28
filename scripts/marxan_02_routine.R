@@ -53,11 +53,11 @@ sp_sr <- sapply(
 )
 
 # Nombre de répétitions
-repetitions <- if (!is.double(repetitions)) {
+nreps_total <- if (!is.double(nreps_total)) {
   as.data.frame(sp$species) %>%
     nrow() %>%
     plyr::round_any(1000, f = ceiling)
-} else { repetitions }
+} else { nreps_total }
 
 # TARGET
 # Traduction en nombre de cellules à intégrer dans la réserve finale
@@ -155,7 +155,7 @@ marxan_file_logs <- Sapply(
       paste("Facteur de pénalité spécifique", ":", SPF),
       paste("Cible", ":", TGT),
       paste("Statuts", ":", pa_status),
-      paste("Répétitions", ":", repetitions),
+      paste("Répétitions", ":", nreps_total),
       sep = "\n"
     )
   }
@@ -171,7 +171,7 @@ marxan_file_names <- sapply(
     )
   })
 
-# Préparation du fichier de sortie
+# Préparation du fichier de sortie final
 fichiers_sorties <- sapply(
   names(marxan_file_names),
   \(ntax) {
@@ -203,15 +203,6 @@ fichiers_sorties <- sapply(
       to   = path
     )
 
-    # Modification et copie du fichier de paramètres initiaux dans le fichier
-    # de sortie.
-    txt <- readLines(here("data", "raw", "input.dat"))
-    txt[14] <- sub("[0-9]+", repetitions, txt[14])
-
-    fileConn <- file(here(path, "input.dat"))
-    write(x = txt, file = fileConn)
-    close(fileConn)
-
     # Rédaction des détails de la routine
     fileConn <- file(here(path, "log"))
     write(x = marxan_file_logs[[ntax]], file = fileConn)
@@ -223,7 +214,7 @@ fichiers_sorties <- sapply(
   USE.NAMES = T
 )
 
-# applications
+# Génération des fichiers d'input de Marxan
 Mapply(
   \(species, dataset, speciesRichness, path) {
 
@@ -265,21 +256,155 @@ Mapply(
       path_figures       = path_figures
     )
 
-    # 4. Éxecution de Marxan ----
+    # Fichier d'éxecution input.dat
+    txt <- readLines(here("data", "raw", "input.dat"))
+    txt[14] <- sub("[0-9]+", nreps_total, txt[14])
 
-    # Mise en éxecutable
-    cmd <- paste("chmod u+x", here(path, "Marxan_x64"))
-    system(cmd)
+    fileConn <- file(here(path, "input.dat"))
+    write(x = txt, file = fileConn)
+    close(fileConn)
 
-    # exécution marxan
-    setwd(path)
-    system(command = here(path, "Marxan_x64"))
-    # ou Marxan_x64.exe sous Windows
+    # Création du fichier qui accueillera les fichiers temporaires
+    dir.create(here(path, "temp"))
+
+  },
+  sp_names,
+  sp_subs,
+  sp_sr,
+  fichiers_sorties
+)
+
+# Génération des fichiers temporaires de Marxan
+Mapply(
+  \(species, dataset, speciesRichness, path) {
+
+    # species <- sp_names$ALL
+    # dataset <- sp_subs$ALL
+    # speciesRichness <- sp_sr$ALL
+    # path <- fichiers_sorties$ALL
+
+    mclapply(
+      nreps_ncpus,
+      \(X) {
+        # Copie du fichier original en fichier temporaire
+        temp_dir_name <- paste(
+          "temp", paste("reps", min(X), max(X), sep = "_"), sep = "/"
+        )
+        path_temp <- here(path, temp_dir_name)
+        if (dir.exists(path_temp)) {
+          unlink(path_temp, recursive = T)
+          dir.create(path_temp)
+        } else {
+          dir.create(path_temp)
+        }
+        file.copy(
+          list.files(path, full.names = T)[-c(1, 4, 7)],
+          path_temp,
+          recursive = T,
+          overwrite = T
+        )
+
+        # Modification des paramètres initiaux
+        txt <- readLines(here(path_temp, "input.dat"))
+        txt[14] <- sub("[0-9]+", length(X), txt[14])
+
+        fileConn <- file(here(path_temp, "input.dat"))
+        write(x = txt, file = fileConn)
+        close(fileConn)
+      }
+    )
+
+  },
+  sp_names,
+  sp_subs,
+  sp_sr,
+  fichiers_sorties
+)
+
+# Exécution de Marxan en parallèle
+Mapply(
+  \(species, dataset, speciesRichness, path) {
+
+    # species <- sp_names$ALL
+    # dataset <- sp_subs$ALL
+    # speciesRichness <- sp_sr$ALL
+    # path <- fichiers_sorties$ALL
+
+    mclapply(
+      list.files(here(path, "temp"), full.names = T),
+      \(f) {
+
+        # f <- list.files(here(path, "temp"), full.names = T)[[1]]
+
+        # Éxecution de Marxan ----
+
+        # Mise en éxecutable
+        cmd <- paste("chmod u+x", here(f, "Marxan_x64"))
+        system(cmd)
+
+        # exécution marxan
+        setwd(f)
+        system(command = here(f, "Marxan_x64"))
+        # ou Marxan_x64.exe sous Windows
+
+      },
+      mc.cores = detectCores() - 1
+    )
+
+  },
+  sp_names,
+  sp_subs,
+  sp_sr,
+  fichiers_sorties
+)
+
+# Aggrégation des fichiers de sorties dans le dossier "output" initial
+Mapply(
+  \(species, dataset, speciesRichness, path) {
+
+    # species <- sp_names$ALL
+    # dataset <- sp_subs$ALL
+    # speciesRichness <- sp_sr$ALL
+    # path <- fichiers_sorties$ALL
+
+    Mapply(
+      \(f, x, y) {
+        # x <- 1
+        # y <- 9
+
+        Mapply(
+          \(ft, nb) {
+            file.rename(
+              ft, sub("temp_r[0-9]+", paste0("temp_r", sprintf("%05d", nb)), ft)
+            )
+            file.copy(ft, here(path, "output"), overwrite = T)
+          },
+          list.files(here(f, "output"), pattern = ".+r.+", full.names = T),
+          seq(x, y)
+        )
+
+      },
+      list.files(here(path, "temp"), full.names = T),
+      list.files(here(path, "temp")) %>%
+        str_split(pattern = "_") %>%
+        lapply(pluck, 2) %>%
+        unlist() %>%
+        as.integer(),
+      list.files(here(path, "temp")) %>%
+        str_split(pattern = "_") %>%
+        lapply(pluck, 3) %>%
+        unlist() %>%
+        as.integer()
+    )
+
+    # Suppression des fichiers temporaires
+    # unlink(here(path, "temp"), recursive = T)
 
     # traitement fichier de sortie marxan
-    rout <- outputMarxanFiles_ensta(
+    rout <- outputMarxanFiles_mosceco(
       spatial_raster = speciesRichness, path_inout = path_inout
     )
+
   },
   sp_names,
   sp_subs,

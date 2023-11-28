@@ -2,9 +2,12 @@
 #### PARAMÉTRAGE                                                            ####
 ################################################################################
 
+source(here::here("scripts", "boot.R"))
+source(here("scripts", "sensibility_index.R"))
+
 # 1. Choix de la zone d'étude ####
-nisl     <- "GLP"
-projt    <- "current"
+nisl     <- c("GLP", "MTQ")
+projt    <- c("current")
 supfam   <- "all"
 subfam   <- switch(supfam, all = "ALL", Majoidea = "MAJ", Muricoidea = "MUR")
 scenario <- "opti" # "pessi"
@@ -127,34 +130,38 @@ spf <- 1000
 # - De rien, modèle "nul"
 spatRast_cost_list <- NULL
 
-spatRast_cost_list <- list(
-
-  # - De la qualité de hotspot de diversité
-  # Objectif : Plus une zone ré-échantillonnée est riche en espèce, plus il est
-  # couteux de ne pas l'inclure dans la réserve.
-  # Concrètement, j'augmente le coût de chaque unité de planification
-  # proportionnellement à sa richesse spécifique.
-  hotspot = rl$current$q0.5,
-
-  # - De la variation de richesses spécifiques
-  # Coefficient de variation
-  # Plus une zone perd des espèces (coefficient de variation qui tend vers -1)
-  # plus elle est sensible aux changements climatiques à venir et plus il est
-  # nécessaire de la conserver, donc plus le coût de l'écartement de cette
-  # maille dans la réserve est élevé.
-  percvar = rv[[scenario]]$q0.5/2 + 0.5,
-
-  # - De la diversité beta temporelle
-  betadiv = rb[[scenario]]$beta.sor,
-
-  NULL
-)
+# spatRast_cost_list <- list(
+#
+#   # - De la qualité de hotspot de diversité
+#   # Objectif : Plus une zone ré-échantillonnée est riche en espèce, plus il est
+#   # couteux de ne pas l'inclure dans la réserve.
+#   # Concrètement, j'augmente le coût de chaque unité de planification
+#   # proportionnellement à sa richesse spécifique.
+#   hotspot = rl$current$q0.5,
+#
+#   # - De la variation de richesses spécifiques
+#   # Coefficient de variation
+#   # Plus une zone perd des espèces (coefficient de variation qui tend vers -1)
+#   # plus elle est sensible aux changements climatiques à venir et plus il est
+#   # nécessaire de la conserver, donc plus le coût de l'écartement de cette
+#   # maille dans la réserve est élevé.
+#   percvar = rv[[scenario]]$q0.5/2 + 0.5,
+#
+#   # - De la diversité beta temporelle
+#   betadiv = rb[[scenario]]$beta.sor,
+#
+#   NULL
+# )
 # - De la variation de richesses spécifiques (pourcentage de variation > 0.5)
 # cost_threshold <- 0.85
 
 # Choix du nombre de répétitions du modèle ####
 # repetitions <- "auto"
-repetitions <- 100
+
+nreps_total <- 2300
+nreps_ncpus <- split(
+  1:nreps_total, ceiling((1:nreps_total)/(detectCores() - 1))
+)
 
 ##########################
 # LANCEMENT DU MODÈLE ####
