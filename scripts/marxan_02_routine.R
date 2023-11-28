@@ -26,7 +26,6 @@ cl$Species <- cl$Species %>%
   gsub(" ", "_", .)
 cl$SpeciesID <- 1:nrow(cl)
 
-# Passage de probabilité de présence à présence-absence
 print(
   paste(
     "Le jeu de données biologique initial contient",
@@ -53,18 +52,14 @@ sp_sr <- sapply(
   USE.NAMES = T
 )
 
+# Nombre de répétitions
 repetitions <- if (!is.double(repetitions)) {
-  as.data.frame(sp) %>%
-  nrow() %>%
-  plyr::round_any(1000, f = ceiling)
+  as.data.frame(sp$species) %>%
+    nrow() %>%
+    plyr::round_any(1000, f = ceiling)
 } else { repetitions }
-# Conservation Features (éléments de conservation)
-# Paramètres à adapter ----
-# the amount of the conservation feature to be included within
-# the reserve network
-# PARAMETRE fixé----
 
-# 2. TARGET
+# TARGET
 # Traduction en nombre de cellules à intégrer dans la réserve finale
 target_cell <- if(!is.double(target)) {
   mapply(
@@ -94,19 +89,34 @@ target_cell <- if(!is.double(target)) {
 }
 
 # Abréviation dans le nom du modèle
-TGT <- if (!is.double(target)) { "YES" } else { "NO" }
+TGT <- if (!is.double(target)) "YES" else "NO"
 
 # Attribution des bonus/malus aux éléments de conservation
-# SPF : Species Penalty Factor / CPF : Conservation Penalty Factor
+
 # SPF PARAMETRE 04 ----
+# SPF : Species Penalty Factor / CPF : Conservation Penalty Factor
+# Coût associé à la rétention d'une unité de gestion dans une réserve
 SPF <- ifelse(is.double(spf), spf, "SPE")
 
-# Coût associé à la rétention d'une unité de gestion dans une réserve
-
 # PARAMETRE 05 COST ----
+#
+spatRast_cost_list100 <- if (is.null(spatRast_cost_list)) NULL else {
+  Sapply(
+    spatRast_cost_list[unlist(lapply(spatRast_cost_list, \(x) !is.null(x)))],
+    \(x) {
+      # x <- spatRast_cost_list$hotspot
+      x <- terra::crop(x, e)
+      x/max(values(x), na.rm = T)*100
+    })
+}
+
 # Abréviation dans le nom du modèle
-COST <- if (!is.double(cost)) { substr(toupper(cost), 1, 3)
-} else { cost }
+COST <- if (is.null(spatRast_cost_list)) "NA" else {
+  names(spatRast_cost_list100) %>%
+    toupper() %>%
+    substr(1, 3) %>%
+    paste(collapse = "+")
+}
 
 # Prise en compte du statut des cellules au sein du réseau AMP déjà existant
 pa_status <- switch(
@@ -156,6 +166,10 @@ fichiers_sorties <- sapply(
     )
     lapply(path_inout, makeMyDir)
 
+    # Et pour les figures
+    path_figures <- here(path, "figures")
+    makeMyDir(path_figures)
+
     # Copie du logiciel Marxan
     file.copy(
       from = list.files(
@@ -196,6 +210,7 @@ mapply(
       input  = here(path, "input"),
       output = here(path, "output")
     )
+    path_figures <- here(path, "figures")
 
     # Fichier pour les éléments à conserver :
     # ConsFeaFile ----
@@ -217,15 +232,18 @@ mapply(
     # Fichier résumant les unités de gestion disponibles.
     # PlanUnFile ----
     PlanUnFile <- planningUnits(
-      spatRast_data   = dataset,
-      # spatRast_cost   = pr[[cost]],
-      # spatRast_status = pa$MPAnationalStatus,
-      pa_status       = pa_status,
-      cost_threshold  = cost_threshold,
-      path_inout      = path_inout
+      spatRast_data      = dataset,
+      spatRast_cost_list = spatRast_cost_list100,
+      path_inout         = path_inout,
+      path_figures       = path_figures
     )
 
     # 4. Éxecution de Marxan ----
+
+    # Mise en éxecutable
+    cmd <- paste("chmod u+x", here(path, "Marxan_x64"))
+    system(cmd)
+
     # exécution marxan
     setwd(path)
     system(command = here(path, "Marxan_x64"))

@@ -3,10 +3,12 @@
 ################################################################################
 
 # 1. Choix de la zone d'étude ####
-nisl   <- "GLP"
-projt  <- "current"
-supfam <- "all"
-subfam <- switch(supfam, all = "ALL", Majoidea = "MAJ", Muricoidea = "MUR")
+nisl     <- "GLP"
+projt    <- "current"
+supfam   <- "all"
+subfam   <- switch(supfam, all = "ALL", Majoidea = "MAJ", Muricoidea = "MUR")
+scenario <- "opti" # "pessi"
+status   <- "none"
 
 # 2. Sous-échantillons ####
 my_subsets <- list(
@@ -56,6 +58,7 @@ my_subsets <- list(
     NULL
   ) %>% sort()
 )
+my_subsets <- my_subsets[subfam]
 
 # 3. Choix des quantité d'unités de conservation à préserver ####
 target <- c(
@@ -119,19 +122,39 @@ spf <- c(
 # la liste ci-dessus.
 spf <- 1000
 
-# 5. Choix des coûts de mailles à partir des pressions anthropiques ####
+# Choix des coûts de mailles à partir :
+
+# - De rien, modèle "nul"
+spatRast_cost_list <- NULL
+
+spatRast_cost_list <- list(
+
+  # - De la qualité de hotspot de diversité
+  # Objectif : Plus une zone ré-échantillonnée est riche en espèce, plus il est
+  # couteux de ne pas l'inclure dans la réserve.
+  # Concrètement, j'augmente le coût de chaque unité de planification
+  # proportionnellement à sa richesse spécifique.
+  hotspot = rl$current$q0.5,
+
+  # - De la variation de richesses spécifiques
+  # Coefficient de variation
+  # Plus une zone perd des espèces (coefficient de variation qui tend vers -1)
+  # plus elle est sensible aux changements climatiques à venir et plus il est
+  # nécessaire de la conserver, donc plus le coût de l'écartement de cette
+  # maille dans la réserve est élevé.
+  percvar = rv[[scenario]]$q0.5/2 + 0.5,
+
+  # - De la diversité beta temporelle
+  betadiv = rb[[scenario]]$beta.sor,
+
+  NULL
+)
+# - De la variation de richesses spécifiques (pourcentage de variation > 0.5)
 # cost_threshold <- 0.85
-cost_threshold <- "none"
-cost <- 1
 
-# 6. Prise en compte ou non du statut des mailles au sein du réseau AMP ####
-status <- "NA"
-# status <- "IN"
-# status <- "OUT"
-
-# 7. Choix du nombre de répétitions du modèle ####
+# Choix du nombre de répétitions du modèle ####
 # repetitions <- "auto"
-repetitions <- 100000
+repetitions <- 100
 
 ##########################
 # LANCEMENT DU MODÈLE ####

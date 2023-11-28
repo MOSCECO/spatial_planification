@@ -1,131 +1,171 @@
 planningUnits <- function(
     spatRast_data,
-    spatRast_cost,
-    spatRast_status,
+    spatRast_cost_list, # liste de rasters de coûts
     path_inout,
-    cost_threshold = "none",
-    pa_status      = "none",
+    path_figures,
+    writePlot = TRUE,
     writeFile = TRUE
 ){
-
-  if (is.double(cost_threshold)) {
-    if (cost_threshold <= 0 | cost_threshold > 1) {
-      stop("Le seuil de pression doit être strictement supérieur à 0 et inférieur ou égale à 1")
-    }
-  }
-
-  # Statut des cellules au sein du réseau d'AMP déjà existantes
-  # cell_stat <- switch(
-  #   pa_status,
-  #   none       = 1,
-  #   locked_in  = 2,
-  #   locked_out = 3
-  # )
+  # spatRast_cost_list <- spatRast_cost_list100
 
   # Pré-traitement
   r <- spatRast_data[[1]]
   r_proj <- terra::project(r, "EPSG:4087")
   r_size <- terra::cellSize(r_proj, unit = "km")
-  # d <- data.frame(spatRast_status, cells = T)
 
-  # Association d'un score aux cellules selon leur appartenance à une AMP
-  # my_status <- ifelse(
-  #   as.data.frame(r_proj, cells = T, xy = T)$cell %in%
-  #     as.numeric(row.names(d[d$MPAnationalStatus == 1, ])), cell_stat, 1
-  # )
+  # Statut des cellules uniforme dans notre cas
   my_status <- 1
 
-  # Association d'un coût à la cellule selon une pression
+  if (!is.null(spatRast_cost_list)) {
+    # Association d'un coût à la cellule selon une pression
 
-  my_cost <- if (is.double(cost_threshold)) {
-    spatRast_cost_thresh <- ifel(
-      spatRast_cost < max(values(spatRast_cost), na.rm = T)*(1-cost_threshold), 0, 1
-    )
-    if (cost_threshold != "none") {
-      makeMyDir(here("figures", "Anthropic_pressures"))
-      makeMyDir(here("figures", "Anthropic_pressures", "Proportion"))
-      path1 <- here("figures", "Anthropic_pressures", "Proportion", mer)
-      makeMyDir(path1)
+    # Fonction de coût pour une grille de valeur en pourcentage correspondant à
+    # une qualité d'intérêt pour l'unité de planification.
 
-      shp <- med_zones_sf[[mer]] %>%
-        st_transform("EPSG:4326")
+    my_costs <- Sapply(
+      names(spatRast_cost_list100),
+      \(nsr) {
 
-      r1 <- spatRast_cost_thresh
-      r1df <- as.data.frame(r1, xy = T)
-      r1df[, 3] <- factor(r1df[, 3])
-      names(r1df)[3] <- paste(
-        "Pression", "\n", "(" %>% paste0(cost_threshold*100, "%)")
-      )
+        # nsr <- "hotspot"
+        # nsr <- "percvar"
+        # nsr <- "betadiv"
+        label_legend <- switch(
+          nsr,
+          hotspot = "Pourcentage de la \nrichesse spécifique\nmaximale",
+          percvar = "Pourcentage du\ncoefficient de\nvariation maximal",
+          betadiv = "Pourcentage de\nla beta-diversité\n maximale"
+        )
+        sr <- spatRast_cost_list[[nsr]]
+        sr_cost <- percentage2Cost(sr)
+        l <- list(perc = sr, cost = sr_cost)
 
-      p11 <- ggplot() +
-        geom_tile(data = r1df, aes(x, y, fill = get(names(r1df)[3]))) +
-        scale_fill_manual(
-          values = c("#150E37FF", "#FEC085FF")
-        ) +
-        guides(fill = guide_legend(title = names(r1df)[3])) +
-        geom_sf(data = shp, fill = "lightgrey", col = NA) +
-        scale_x_continuous(expand = c(0, 0)) +
-        scale_y_continuous(expand = c(0, 0)) +
-        theme(
-          axis.title           = element_blank(),
-          panel.background     = element_blank(),
-          panel.border         = element_blank(),
-          panel.grid           = element_blank(),
-          panel.spacing        = unit(0, "lines"),
-          plot.background      = element_blank()
+        # Dossier de sortie
+        path_sc <- here(path_figures, "spatial_cost")
+        makeMyDir(path_sc)
+
+        # polygone de l'île
+        shp <- maps_marxan[[nisl]]
+
+        # Génération des graphiques, sauvegarde des grilles de valeurs
+        lapply(
+          names(l),
+          \(nsrl) {
+            # nsrl <- "perc"
+            # nsrl <- "cost"
+            srl <- l[[nsrl]]
+            sr_df <- as.data.frame(sr, xy = T)
+            names(sr_df)[3] <- label_legend
+
+            # Nuancier
+            col_low  <- if (nsrl != "cost") "#150E37FF" else "#FEC085FF"
+            col_high <- if (nsrl != "cost") "#FEC085FF" else "#150E37FF"
+
+            # Label
+            llegend <- if (nsrl != "cost") names(sr_df)[3] else "Coût"
+
+            # Graphique
+            p_cost <- ggplot() +
+              geom_tile(data = sr_df, aes(x, y, fill = get(label_legend))) +
+              scale_fill_gradient(low = col_low, high = col_high) +
+              guides(fill = guide_colorbar(title = llegend)) +
+              geom_sf(data = shp, fill = "white", col = NA) +
+              geom_sf(data = shp, fill = "lightgreen", col = NA, alpha = 0.5) +
+              scale_x_continuous(expand = c(0, 0)) +
+              scale_y_continuous(expand = c(0, 0)) +
+              theme(
+                axis.title           = element_blank(),
+                panel.background     = element_blank(),
+                panel.border         = element_blank(),
+                panel.grid           = element_blank(),
+                panel.spacing        = unit(0, "lines"),
+                plot.background      = element_blank()
+              )
+
+            # Sauvegarde
+            sauv <- if (nsrl != "cost") 100 else "cost"
+            file_name <- paste(nsr, sauv, sep = "_")
+
+            if(writePlot) {
+              ggexport(
+                p_cost,
+                filename = here(path_sc, file_name %>% paste0(".png")),
+                width = 5000, height = 5000, res = 500
+              )
+            }
+
+            if(writeFile) {
+              writeRaster(
+                srl, here(path_sc, file_name %>% paste0(".tif")), overwrite = T
+              )
+            }
+
+          }
         )
 
-      file_name <- here(
-        path1,
-        paste(cost, "prop", sub("0\\.", "", cost_threshold), sep = "_") %>%
-          paste0(".png")
-      )
+        return(as.data.frame(l$cost))
 
-      if (!dir.exists(file_name)) {
-        ggexport(
-          p11, filename = file_name, width = 5000, height = 5000, res = 500
-        )
       }
+    )
+    my_costs %>% lapply(dim)
+    # Compilation des coûts
+    df_costs <- Reduce(rowSums, my_costs)
+
+    # Aggrégation en un dataframe
+    PlanUnFile <- as.data.frame(r_proj, cells = T, xy = T) %>%
+      cbind(
+        area   = values(r_size)[which(!is.nan(values(r_proj)))],
+        id     = 1:nrow(.),
+        cost   = df_costs,
+        status = my_status
+      )
+    names(PlanUnFile) <- c(
+      "cell", "xloc", "yloc", "value", "area", "id", "cost", "status"
+    )
+
+    if (writeFile){
+      write.table(
+        PlanUnFile,
+        file = here(path_inout$input, "PlanUnFile.txt"),
+        row.names = F
+      )
+
+      write.table(
+        PlanUnFile[order(PlanUnFile$id), c('id', 'cost', 'status')],
+        file = here(path_inout$input, "pu.dat"),
+        sep = ",",
+        row.names = F,
+        quote = F
+      )
     }
 
-    dcost <- data.frame(spatRast_cost_thresh, cells = T)
-    ifelse(
-      as.data.frame(r_proj, cells = T, xy = T)$cell %in%
-        as.numeric(row.names(dcost[dcost[names(spatRast_cost)] == 1, ])),
-      1000,
-      1
-    )
+    return(PlanUnFile)
   } else {
-    1
+    PlanUnFile <- as.data.frame(r_proj, cells = T, xy = T) %>%
+      cbind(
+        area   = values(r_size)[which(!is.nan(values(r_proj)))],
+        id     = 1:nrow(.),
+        cost   = 1,
+        status = 1
+      )
+    names(PlanUnFile) <- c(
+      "cell", "xloc", "yloc", "value", "area", "id", "cost", "status"
+    )
+
+    if (writeFile){
+      write.table(
+        PlanUnFile,
+        file = here(path_inout$input, "PlanUnFile.txt"),
+        row.names = F
+      )
+
+      write.table(
+        PlanUnFile[order(PlanUnFile$id), c('id', 'cost', 'status')],
+        file = here(path_inout$input, "pu.dat"),
+        sep = ",",
+        row.names = F,
+        quote = F
+      )
+    }
   }
 
-  # Aggrégation en un dataframe
-  PlanUnFile <- as.data.frame(r_proj, cells = T, xy = T) %>%
-    cbind(
-      area   = values(r_size)[which(!is.nan(values(r_proj)))],
-      id     = 1:nrow(.),
-      cost   = my_cost,
-      status = my_status
-    )
-  names(PlanUnFile) <- c(
-    "cell", "xloc", "yloc", "value", "area", "id", "cost", "status"
-  )
-
-  if (writeFile){
-    write.table(
-      PlanUnFile,
-      file = here(path_inout$input, "PlanUnFile.txt"),
-      row.names = F
-    )
-
-    write.table(
-      PlanUnFile[order(PlanUnFile$id), c('id', 'cost', 'status')],
-      file = here(path_inout$input, "pu.dat"),
-      sep = ",",
-      row.names = F,
-      quote = F
-    )
-  }
-
-  return(PlanUnFile)
 }

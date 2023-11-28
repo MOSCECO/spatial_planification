@@ -6,6 +6,8 @@ bsr <- Sapply(
   c("ca"),
   \(ens_alg) {
 
+    # ens_alg <- "ca"
+
     # Dossier de sortie
     path_ens_alg <- here("figures", "species_richness_bootstrap", ens_alg)
     makeMyDir(path_ens_alg)
@@ -31,6 +33,8 @@ bsr <- Sapply(
     spec_pjs_plots <- Sapply(
       names(rl),
       \(nsr) {
+
+        # nsr <- names(rl)[1]
 
         # Dossier de sortie
         path_nsr <- here(path_ens_alg, nsr)
@@ -84,13 +88,17 @@ bsr <- Sapply(
               })
 
             # x11()
-            # plots_isl_bsr$init | (
-            #   (plots_isl_bsr$q02.5 / plots_isl_bsr$q50.0 / plots_isl_bsr$q97.5) +
+            # plots_isl_bsr[[1]] | (
+            #   (plots_isl_bsr[[2]] / plots_isl_bsr[[3]] / plots_isl_bsr[[4]]) +
             #     plot_layout(guides = "collect")
             # )
 
-            p <- (plots_isl_bsr$init | plots_isl_bsr$q02.5) /
-              (plots_isl_bsr$q50.0 | plots_isl_bsr$q97.5)
+            # 1 : Richesse spécifique modélisée observée
+            # 2 : Richesse spécifique ré-échantillonnée (quantile 2.5%)
+            # 3 : Richesse spécifique ré-échantillonnée (médiane)
+            # 4 : Richesse spécifique ré-échantillonnée (quantile 97.5%)
+            p <- (plots_isl_bsr[[1]] | plots_isl_bsr[[2]]) /
+              (plots_isl_bsr[[3]] | plots_isl_bsr[[4]])
 
             # nom des fichiers de sauvegarde
             file_name <- paste(
@@ -115,8 +123,8 @@ bsr <- Sapply(
             }
 
             # préparation de la seconde carte sans certains éléments graphiques
-            plots_isl_bsr$init <- if(nisl == "MTQ") {
-              plots_isl_bsr$init +
+            plots_isl_bsr[[1]] <- if(nisl == "MTQ") {
+              plots_isl_bsr[[1]] +
                 theme(
                   title        = element_blank(),
                   axis.title.y = element_blank(),
@@ -125,27 +133,27 @@ bsr <- Sapply(
                   axis.ticks.y = element_blank()
                 )
             } else {
-              plots_isl_bsr$init + theme(legend.position = "none")
+              plots_isl_bsr[[1]] + theme(legend.position = "none")
             }
 
-            plots_isl_bsr$q02.5 <- if(nisl == "MTQ") {
-              plots_isl_bsr$q02.5 + theme(title = element_blank())
-            } else { plots_isl_bsr$q02.5 }
+            plots_isl_bsr[[2]] <- if(nisl == "MTQ") {
+              plots_isl_bsr[[2]] + theme(title = element_blank())
+            } else { plots_isl_bsr[[2]] }
 
-            plots_isl_bsr$q50.0 <- if(nisl == "MTQ") {
-              plots_isl_bsr$q50.0 + theme(title = element_blank())
-            } else { plots_isl_bsr$q50.0 }
+            plots_isl_bsr[[3]] <- if(nisl == "MTQ") {
+              plots_isl_bsr[[3]] + theme(title = element_blank())
+            } else { plots_isl_bsr[[3]] }
 
-            plots_isl_bsr$q97.5 <- if(nisl == "MTQ") {
-              plots_isl_bsr$q97.5 + theme(title = element_blank())
-            } else { plots_isl_bsr$q97.5 }
+            plots_isl_bsr[[4]] <- if(nisl == "MTQ") {
+              plots_isl_bsr[[4]] + theme(title = element_blank())
+            } else { plots_isl_bsr[[4]] }
 
             return(plots_isl_bsr)
           }
         )
 
         P <- Mapply(\(x, y) x + y, ps$GLP, ps$MTQ)
-        P_out <- (P$init | P$q02.5) / (P$q50.0 | P$q97.5)
+        P_out <- (P[[1]] | P[[2]]) / (P[[3]] | P[[4]])
 
         # nom des fichiers de sauvegarde
         file_name <- paste(

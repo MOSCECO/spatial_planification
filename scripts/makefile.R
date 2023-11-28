@@ -19,6 +19,11 @@ source(here::here("scripts", "cluster_temporal_betadiv.R"))
 source(here::here("scripts", "bootstrap_species_richness.R"))
 source(here::here("scripts", "bootstrap_species_richness_figures.R"))
 
+# Indices de sensibilité
+# Pour utiliser dans Marxan les données de beta diversité et de changements des
+# richesses spécifiques issues des ré-échantillonnages
+source(here::here("scripts", "sensibility_index"))
+
 # Routine Marxan
 source(here::here("scripts", "marxan_01_parametrage.R"))
 source(here::here("scripts", "marxan_02_routine.R"))

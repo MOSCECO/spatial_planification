@@ -22,46 +22,19 @@ names(rl) <- list.files(
   unlist(use.names = F)
 
 # Opérations sur rasters
-r0 <- rl$current$q50.0
-r1 <- rl$ssp126$q50.0
-r5 <- rl$ssp585$q50.0
 
 # Soustraction
-r10 <- r1 - r0
-x11(); plot(r10)
-r50 <- r5 - r0
-x11(); plot(r50)
+rd       <- list()
+rd$opti  <- subset(rl$current, 2:4) - subset(rl$ssp126, 2:4)
+rd$pessi <- subset(rl$current, 2:4) - subset(rl$ssp585, 2:4)
 
 # Pourcentage de variation
-r10m <- (r1 - r0)/max(r0, r1)
-x11(); plot(r10m)
-r50m <- (r5 - r0)/max(r0, r5)
-x11(); plot(r50m)
+pv <- function(x, y) (x - y)/max(x, y)
+rv <- list()
+rv$opti <- pv(subset(rl$ssp126, 2:4), subset(rl$current, 2:4))
+rv$pessi <- pv(subset(rl$ssp585, 2:4), subset(rl$current, 2:4))
 
 # Diversité beta ####
-
-betar <- list.files(here("data", "tidy", "beta_diversity"), full.names = T) %>%
+rb <- list.files(here("data", "tidy", "beta_diversity"), full.names = T) %>%
   lapply(rast)
-names(betar) <- c("opti", "pessi")
-
-x11(); plot(betar$opti$beta.sor)
-x11(); plot(betar$pessi$beta.sor)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+names(rb) <- c("opti", "pessi")

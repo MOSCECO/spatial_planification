@@ -8,7 +8,7 @@ i_ensalg <- c("ca", "wmean")
 i_projtm <- c("current", "ssp126", "ssp585")
 
 # Paramétrage bootstrap
-n_resamp <- 2
+n_resamp <- 10
 
 # dossier de sortie
 pout <- here("data", "tidy", "bootstrap_species_richness")
@@ -24,7 +24,7 @@ lapply(
           i_projtm,
           \(projt) {
 
-            # supfam  <- "Muricoidea"
+            # supfam  <- "all"
             # ens_alg <- "ca"
             # projt   <- "ssp126"
 
