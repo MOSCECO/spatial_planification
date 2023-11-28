@@ -121,40 +121,63 @@ COST <- if (is.null(spatRast_cost_list)) "NA" else {
 # Prise en compte du statut des cellules au sein du réseau AMP déjà existant
 pa_status <- switch(
   status,
-  `NA` = "none",
-  IN   = "locked_in",
-  OUT  = "locked_out"
+  none      = "NA",
+  locked_in = "IN",
+  OUT       = "OUT"
 )
 
+PROJT <- switch(
+  projt,
+  current = "Contemporaine",
+  ssp126 = "Projection optimiste",
+  ssp585 = "Projection pessimiste"
+)
+
+ZON <- switch(
+  nisl,
+  ANT = "Antilles",
+  GLP = "Guadeloupe",
+  MTQ = "Martinique"
+)
 # 3. Génération des fichiers pour Marxan ----
 # Génération des fichiers pour faire fonctionner Marxan
 # Fichiers d'entrées et de sorties de données pour Marxan
 makeMyDir(here("data", "analysis", "marxan"))
 
-marxan_file_names <- sapply(
+marxan_file_logs <- Sapply(
   names(sp_subs),
   \(n) {
     paste(
-      n,
-      paste(
-        # "PAT", pat,
-        "REP", repetitions,
-        "SPF", SPF,
-        "COS", COST,
-        "TGT", TGT,
-        "STT", status,
-        "ZON", nisl,
-        sep = "-"
-      ),
-      sep = "_"
+      paste("Distribution", ":", PROJT),
+      paste("Taxon", ":", n),
+      paste("Zone", ":", ZON),
+      paste("Coûts", ":", COST),
+      paste("Facteur de pénalité spécifique", ":", SPF),
+      paste("Cible", ":", TGT),
+      paste("Statuts", ":", pa_status),
+      paste("Répétitions", ":", repetitions),
+      sep = "\n"
     )
   }
 )
 
+ncosts <- names(spatRast_cost_list100) %>% substr(1,3) %>% paste(collapse = "+")
+marxan_file_names <- sapply(
+  names(sp_subs),
+  \(n) {
+    paste(
+      projt, tolower(n), tolower(nisl), paste("cost", ncosts, sep = "-"),
+      sep = "_"
+    )
+  })
+
 # Préparation du fichier de sortie
 fichiers_sorties <- sapply(
-  marxan_file_names,
-  \(f) {
+  names(marxan_file_names),
+  \(ntax) {
+
+    f <- marxan_file_names[[ntax]]
+
     # Création du fichier correspondant au run Marxan
     path <- here("data", "analysis", "marxan", f)
     makeMyDir(path, del = T)
@@ -189,6 +212,10 @@ fichiers_sorties <- sapply(
     write(x = txt, file = fileConn)
     close(fileConn)
 
+    # Rédaction des détails de la routine
+    fileConn <- file(here(path, "log"))
+    write(x = marxan_file_logs[[ntax]], file = fileConn)
+    close(fileConn)
 
     return(path)
   },
@@ -197,7 +224,7 @@ fichiers_sorties <- sapply(
 )
 
 # applications
-mapply(
+Mapply(
   \(species, dataset, speciesRichness, path) {
 
     # species <- sp_names$ALL
@@ -257,7 +284,5 @@ mapply(
   sp_names,
   sp_subs,
   sp_sr,
-  fichiers_sorties,
-  USE.NAMES = T,
-  SIMPLIFY  = F
+  fichiers_sorties
 )

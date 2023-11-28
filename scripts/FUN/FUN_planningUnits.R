@@ -40,8 +40,13 @@ planningUnits <- function(
         l <- list(perc = sr, cost = sr_cost)
 
         # Dossier de sortie
-        path_sc <- here(path_figures, "spatial_cost")
+        path_sc <- here(path_figures, "couts")
         makeMyDir(path_sc)
+        path_tif <- here(path_sc, "tif")
+        makeMyDir(path_tif)
+        path_png <- here(path_sc, "png")
+        makeMyDir(path_png)
+
 
         # polygone de l'île
         shp <- maps_marxan[[nisl]]
@@ -88,14 +93,14 @@ planningUnits <- function(
             if(writePlot) {
               ggexport(
                 p_cost,
-                filename = here(path_sc, file_name %>% paste0(".png")),
+                filename = here(path_png, file_name %>% paste0(".png")),
                 width = 5000, height = 5000, res = 500
               )
             }
 
             if(writeFile) {
               writeRaster(
-                srl, here(path_sc, file_name %>% paste0(".tif")), overwrite = T
+                srl, here(path_tif, file_name %>% paste0(".tif")), overwrite = T
               )
             }
 
