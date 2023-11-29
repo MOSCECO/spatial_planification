@@ -12,12 +12,24 @@ outputMarxanFiles_mosceco <- function(spatial_raster, path_inout) {
   PUvsPR <- fread(here(input,"PUvsCFFile.txt"))
 
   # Importation et calcul de la somme des solutions
-  temp_runs <- list.files(output, pattern = "temp_r.+", full.names = T) %>%
-    lapply(fread, header = T, sep = ",")
+  temp_runs <- list.files(output, pattern = "temp_r.+", full.names = T)
+
+  # Appliquer "fread" d'un seul coup bousille la RAM, tentative avec une boucle
+  # "for" :
+  temp_tb <- temp_runs[[1]] %>%
+    fread(header = T, sep = ",") %>%
+    select(number = solution)
+  temp_tb$number <- rep(0, nrow(temp_tb))
+
+  for (f in temp_runs) {
+    o <- fread(f, header = T, sep = ",") %>% select(solution)
+    temp_tb <- cbind(temp_tb, o)
+    temp_tb$number <- rowSums(temp_tb) %>% as.integer()
+  }
+
   tr <- cbind(
-    temp_runs[[1]] %>% select(planning_unit),
-    number = rowSums(do.call(cbind, lapply(temp_runs, select, "solution"))) %>%
-      as.integer()
+    temp_runs[[1]] %>% fread(header = T, sep = ",") %>% select(planning_unit),
+    number = temp_tb$number
   )
 
   # Organisation de la table sommée dans l'ordre des plannin_units

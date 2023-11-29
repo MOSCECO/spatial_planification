@@ -165,5 +165,5 @@ nreps_ncpus <- split(
   1:nreps_total, ceiling((1:nreps_total)/(detectCores() - 1))
 )
 
-source(here("scripts", "marxan_02_routine.R"))
+source(here("scripts", "marxan_02_routine2.R"))
 source(here("scripts", "marxan_03_visualisation.R"))
