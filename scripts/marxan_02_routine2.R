@@ -171,8 +171,6 @@ fichiers_sorties <- Sapply(
 Mapply(
   \(speciesRichness, path) {
 
-    # species <- sp_names$ALL
-    # dataset <- sp_subs$ALL
     # speciesRichness <- sp_sr$ALL
     # path <- fichiers_sorties$ALL
 
@@ -185,7 +183,7 @@ Mapply(
 
     # traitement fichier de sortie marxan
     rout <- outputMarxanFiles_mosceco(
-      spatial_raster = speciesRichness, path_inout = path_inout
+      spatial_raster = speciesRichness, path_inout = path_inout, progress = T
     )
 
   },

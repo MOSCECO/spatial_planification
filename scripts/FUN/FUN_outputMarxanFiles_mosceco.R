@@ -1,4 +1,6 @@
-outputMarxanFiles_mosceco <- function(spatial_raster, path_inout) {
+outputMarxanFiles_mosceco <- function(
+    spatial_raster, path_inout, progress = F
+) {
 
   mesh <- as.data.frame(spatial_raster, cells = T, xy = T)
 
@@ -15,22 +17,27 @@ outputMarxanFiles_mosceco <- function(spatial_raster, path_inout) {
   temp_runs <- list.files(output, pattern = "temp_r.+", full.names = T)
 
   # Appliquer "fread" d'un seul coup bousille la RAM, tentative avec une boucle
-  # "for" :
-  temp_tb <- temp_runs[[1]] %>%
-    fread(header = T, sep = ",") %>%
-    select(number = solution)
-  temp_tb$number <- rep(0, nrow(temp_tb))
+  # "mclapply" :
+  chunks <- split(temp_runs, ceiling(1:length(temp_runs)/1000))
 
-  for (f in temp_runs) {
-    o <- fread(f, header = T, sep = ",") %>% select(solution)
-    temp_tb <- cbind(temp_tb, o)
-    temp_tb$number <- rowSums(temp_tb) %>% as.integer()
-  }
+  out_chunks <- mclapply(
+    chunks,
+    \(fs) {
+      # fs <- chunks[[1]]
+      parPrint(paste0(fs[[1]], "\n", fs[[length(fs)]]))
+      truns <- fs %>% lapply(fread, header = T, sep = ",")
+      numbs <- rowSums(do.call(cbind, lapply(truns, select, "solution"))) %>%
+          as.integer()
+    },
+    mc.cores = detectCores() - 1
+  )
 
   tr <- cbind(
     temp_runs[[1]] %>% fread(header = T, sep = ",") %>% select(planning_unit),
-    number = temp_tb$number
+    number = rowSums(do.call(cbind, out_chunks)) %>% as.integer()
   )
+
+  saveRDS(tr, here(ouput, "ssoln.rds"))
 
   # Organisation de la table sommée dans l'ordre des plannin_units
   tr <- tr[order(tr), ]
